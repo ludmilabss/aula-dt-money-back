@@ -1,37 +1,73 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { PrismaService } from 'src/modules/prisma/prisma.service';
+import { Transaction } from '@prisma/client'; 
 
 @Injectable()
-export class TransactionService {
-  constructor(private readonly prisma: PrismaService) {}
-  async create({ category, data, price, title, type }: CreateTransactionDto) {
-    const createdTransaction = await this.prisma.transaction.create({
+export class TransactionsService {
+  constructor(private prisma: PrismaService) {}
+
+  /**
+   * @param createTransactionDto 
+   * @returns 
+   */
+  async create(createTransactionDto: CreateTransactionDto): Promise<Transaction> {
+    return this.prisma.transaction.create({
       data: {
-        title,
-        category,
-        data,
-        price,
-        type,
+        ...createTransactionDto,
+        data: new Date(createTransactionDto.data),
       },
     });
-    return createdTransaction;
   }
 
-  findAll() {
-    return `This action returns all transaction`;
+  /**
+   * @returns 
+   */
+  async findAll(): Promise<Transaction[]> {
+    return this.prisma.transaction.findMany();
   }
 
-  findOne(id: string) {
-    return `This action returns a #${id} transaction`;
+  /**
+   * @param id 
+   * @returns 
+   */
+  async findOne(id: string): Promise<Transaction> {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id },
+    });
+
+    if (!transaction) {
+      throw new NotFoundException(`Transaction with ID "${id}" not found.`);
+    }
+    return transaction;
   }
 
-  update(id: string, updateTransactionDto: UpdateTransactionDto) {
-    return `This action updates a #${id} transaction`;
+  /**
+   * @param id 
+   * @param updateTransactionDto 
+   * @returns 
+   */
+  async update(id: string, updateTransactionDto: UpdateTransactionDto): Promise<Transaction> {
+    await this.findOne(id);
+
+    return this.prisma.transaction.update({
+      where: { id },
+      data: {
+        ...updateTransactionDto,
+        ...(updateTransactionDto.data && { data: new Date(updateTransactionDto.data) }),
+      },
+    });
   }
 
-  remove(id: string) {
-    return `This action removes a #${id} transaction`;
+  /**
+   * @param id 
+   */
+  async remove(id: string): Promise<void> {
+    await this.findOne(id);
+
+    await this.prisma.transaction.delete({
+      where: { id },
+    });
   }
 }
