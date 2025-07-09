@@ -66,6 +66,10 @@ export class TransactionsService {
   async remove(id: string): Promise<void> {
     await this.findOne(id);
 
+    if (!foundTransaction) {
+      throw new BadRequestException(`Transaction with id ${id} not found`);
+    }
+
     await this.prisma.transaction.delete({
       where: { id },
     });
