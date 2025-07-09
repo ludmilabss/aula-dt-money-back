@@ -1,70 +1,71 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { Transaction } from '@prisma/client'; 
+import { PrismaService } from 'src/modules/prisma/prisma.service';
 
 @Injectable()
-export class TransactionsService {
-  constructor(private prisma: PrismaService) {}
-
-  /**
-   * @param createTransactionDto 
-   * @returns 
-   */
-  async create(createTransactionDto: CreateTransactionDto): Promise<Transaction> {
-    return this.prisma.transaction.create({
+export class TransactionService {
+  constructor(private readonly prisma: PrismaService) {}
+  async create({ category, data, price, title, type }: CreateTransactionDto) {
+    const createdTransaction = await this.prisma.transaction.create({
       data: {
-        ...createTransactionDto,
-        data: new Date(createTransactionDto.data),
+        title,
+        category,
+        data,
+        price,
+        type,
       },
     });
+    return createdTransaction;
   }
 
-  /**
-   * @returns 
-   */
-  async findAll(): Promise<Transaction[]> {
-    return this.prisma.transaction.findMany();
+  async findAll(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    const [transactions, total] = await this.prisma.$transaction([
+      this.prisma.transaction.findMany({
+        skip,
+        take,
+        orderBy: { data: 'desc' },
+      }),
+      this.prisma.transaction.count(),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: transactions,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
-  /**
-   * @param id 
-   * @returns 
-   */
-  async findOne(id: string): Promise<Transaction> {
-    const transaction = await this.prisma.transaction.findUnique({
+  async findOne(id: string) {
+    const foundTransaction = await this.prisma.transaction.findUnique({
       where: { id },
     });
+    return foundTransaction;
+  }
 
-    if (!transaction) {
-      throw new NotFoundException(`Transaction with ID "${id}" not found.`);
+  async update(id: string, updateTransactionDto: UpdateTransactionDto) {
+    const foundTransaction = await this.findOne(id);
+
+    if (!foundTransaction) {
+      throw new BadRequestException(`Transaction with id ${id} not found`);
     }
-    return transaction;
-  }
 
-  /**
-   * @param id 
-   * @param updateTransactionDto 
-   * @returns 
-   */
-  async update(id: string, updateTransactionDto: UpdateTransactionDto): Promise<Transaction> {
-    await this.findOne(id);
-
-    return this.prisma.transaction.update({
+    const updatedTransaction = await this.prisma.transaction.update({
       where: { id },
-      data: {
-        ...updateTransactionDto,
-        ...(updateTransactionDto.data && { data: new Date(updateTransactionDto.data) }),
-      },
+      data: updateTransactionDto,
     });
+    return updatedTransaction;
   }
 
-  /**
-   * @param id 
-   */
-  async remove(id: string): Promise<void> {
-    await this.findOne(id);
+  async remove(id: string) {
+    const foundTransaction = await this.findOne(id);
 
     if (!foundTransaction) {
       throw new BadRequestException(`Transaction with id ${id} not found`);

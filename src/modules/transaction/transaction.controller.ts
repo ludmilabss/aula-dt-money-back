@@ -1,63 +1,54 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus, Res } from '@nestjs/common';
-import { Response } from 'express'; 
-import { TransactionsService } from './transaction.service';
+import {
+  Controller,
+  Get,
+  Query,
+  Post,
+  Body,
+  Put,
+  Param,
+  Delete,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { TransactionService } from './transaction.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 
-@Controller('transactions') 
-export class TransactionsController {
-  constructor(private readonly transactionsService: TransactionsService) {}
+@Controller('transaction')
+export class TransactionController {
+  constructor(private readonly transactionService: TransactionService) {}
 
-  /**
-   * @param createTransactionDto 
-   * @param res 
-   * @returns
-   */
   @Post()
-  @HttpCode(HttpStatus.CREATED) 
-  async create(@Body() createTransactionDto: CreateTransactionDto) {
-    return this.transactionsService.create(createTransactionDto);
+  create(@Body() createTransactionDto: CreateTransactionDto) {
+    return this.transactionService.create(createTransactionDto);
   }
 
-  /**
-   * @returns 
-   */
   @Get()
-  @HttpCode(HttpStatus.OK) 
-  async findAll() {
-    return this.transactionsService.findAll();
+  findAll(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10',
+  ) {
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    return this.transactionService.findAll(pageNumber, limitNumber);
   }
 
-  /**
-   * @param id 
-   * @returns 
-   */
   @Get(':id')
-  @HttpCode(HttpStatus.OK) 
-  async findOne(@Param('id') id: string) {
-    return this.transactionsService.findOne(id);
+  findOne(@Param('id') id: string) {
+    return this.transactionService.findOne(id);
   }
 
-  /**
-   * @param id 
-   * @param updateTransactionDto 
-   * @returns 
-   */
-  @Patch(':id')
-  @HttpCode(HttpStatus.OK) 
-  async update(@Param('id') id: string, @Body() updateTransactionDto: UpdateTransactionDto) {
-    return this.transactionsService.update(id, updateTransactionDto);
+  @Put(':id')
+  update(
+    @Param('id') id: string,
+    @Body() updateTransactionDto: UpdateTransactionDto,
+  ) {
+    return this.transactionService.update(id, updateTransactionDto);
   }
 
-  /**
-   * @param id 
-   * @param res 
-   * @returns 
-   */
   @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT) 
-  async remove(@Param('id') id: string, @Res() res: Response) {
-    await this.transactionsService.remove(id);
-    res.send();
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id') id:string) {
+    return this.transactionService.remove(id);
   }
 }
